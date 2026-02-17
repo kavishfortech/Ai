@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KAVISHFORTECH AI</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@700&family=Share+Tech+Mono&display=swap');
+
+:root{
+--neon-green:#39ff14;
+--neon-cyan:#00f3ff;
+--neon-pink:#ff00ff;
+--bg:#050510;
+--panel:#0b0b1a;
+}
+
+*{
+box-sizing:border-box;
+}
+
+body{
+margin:0;
+background:var(--bg);
+font-family:'Share Tech Mono',monospace;
+color:white;
+display:flex;
+flex-direction:column;
+align-items:center;
+height:100vh;
+overflow:hidden;
+}
+
+/* RGB HEADER */
+#topBox{
+width:95%;
+margin-top:15px;
+padding:18px;
+text-align:center;
+font-family:'Syncopate';
+font-size:1.4rem;
+border:3px solid red;
+border-radius:14px;
+animation:rgb 3s linear infinite;
+}
+
+@keyframes rgb{
+0%{border-color:red;color:red;box-shadow:0 0 20px red}
+33%{border-color:lime;color:lime;box-shadow:0 0 20px lime}
+66%{border-color:cyan;color:cyan;box-shadow:0 0 20px cyan}
+100%{border-color:red;color:red;box-shadow:0 0 20px red}
+}
+
+/* MAIN CHAT BOX */
+#chatContainer{
+width:95%;
+max-width:1000px;
+height:75vh;
+margin-top:15px;
+background:var(--panel);
+border-radius:16px;
+border:1px solid #222;
+display:flex;
+flex-direction:column;
+overflow:hidden;
+}
+
+/* MESSAGE AREA */
+#messages{
+flex:1;
+padding:20px;
+overflow-y:auto;
+display:flex;
+flex-direction:column;
+}
+
+.message{
+margin-bottom:15px;
+padding:12px;
+border-radius:10px;
+max-width:80%;
+white-space:pre-wrap;
+}
+
+.user{
+align-self:flex-end;
+background:#111;
+border-left:4px solid var(--neon-green);
+}
+
+.bot{
+align-self:flex-start;
+background:#111;
+border-left:4px solid var(--neon-pink);
+}
+
+/* INPUT AREA */
+#inputArea{
+display:flex;
+border-top:1px solid #222;
+}
+
+#userInput{
+flex:1;
+padding:15px;
+background:#000;
+border:none;
+color:white;
+font-size:1rem;
+}
+
+#sendBtn{
+background:var(--neon-cyan);
+border:none;
+padding:15px 25px;
+cursor:pointer;
+font-weight:bold;
+}
+
+/* FILE UPLOAD */
+#uploadBar{
+padding:10px;
+border-top:1px solid #222;
+display:flex;
+justify-content:space-between;
+align-items:center;
+background:#0f0f1f;
+}
+
+#fileInput{
+color:white;
+}
+
+#fileStatus{
+font-size:0.8rem;
+color:#aaa;
+}
+</style>
+</head>
+
+<body>
+
+<div id="topBox">KAVISHFORTECH AI</div>
+
+<div id="chatContainer">
+
+<div id="messages"></div>
+
+<div id="inputArea">
+<input id="userInput" type="text" placeholder="Ask anything...">
+<button id="sendBtn">SEND</button>
+</div>
+
+<div id="uploadBar">
+<input type="file" id="fileInput" multiple>
+<div id="fileStatus">0 / 10 files uploaded</div>
+</div>
+
+</div>
+
+<script>
+
+/* ===========================
+   🔐 INSERT YOUR NEW KEY
+=========================== */
+
+const OPENAI_API_KEY = "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";
+
+/* =========================== */
+
+const messagesDiv = document.getElementById("messages");
+const input = document.getElementById("userInput");
+const sendBtn = document.getElementById("sendBtn");
+const fileInput = document.getElementById("fileInput");
+const fileStatus = document.getElementById("fileStatus");
+
+let uploadedFiles = [];
+let uploadLockTime = null;
+
+/* ===========================
+   MESSAGE FUNCTIONS
+=========================== */
+
+function addMessage(text, type){
+const div = document.createElement("div");
+div.className = "message " + type;
+div.textContent = text;
+messagesDiv.appendChild(div);
+messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+/* ===========================
+   SEND MESSAGE
+=========================== */
+
+async function sendMessage(){
+const text = input.value.trim();
+if(!text) return;
+
+addMessage(text,"user");
+input.value="";
+
+try{
+const response = await fetch("https://api.openai.com/v1/chat/completions",{
+method:"POST",
+headers:{
+"Content-Type":"application/json",
+"Authorization":"Bearer " + OPENAI_API_KEY
+},
+body:JSON.stringify({
+model:"gpt-4o-mini",
+messages:[
+{role:"system",content:"You are a helpful AI assistant."},
+{role:"user",content:text}
+]
+})
+});
+
+const data = await response.json();
+
+if(data.error){
+addMessage("API Error: " + data.error.message,"bot");
+return;
+}
+
+addMessage(data.choices[0].message.content,"bot");
+
+}catch(e){
+addMessage("Connection Error","bot");
+}
+}
+
+sendBtn.onclick = sendMessage;
+
+input.addEventListener("keydown",e=>{
+if(e.key==="Enter") sendMessage();
+});
+
+/* ===========================
+   FILE UPLOAD LOGIC
+=========================== */
+
+fileInput.addEventListener("change",function(){
+
+const now = Date.now();
+
+/* Check lock */
+if(uploadLockTime && now < uploadLockTime){
+alert("Upload limit reached. Try again later.");
+fileInput.value="";
+return;
+}
+
+/* Add files */
+for(let file of fileInput.files){
+if(uploadedFiles.length >= 10){
+uploadLockTime = Date.now() + (60 * 60 * 1000); // 1 hour
+alert("10 files uploaded. Upload locked for 1 hour.");
+break;
+}
+uploadedFiles.push(file);
+}
+
+/* Update status */
+fileStatus.textContent = uploadedFiles.length + " / 10 files uploaded";
+
+fileInput.value="";
+});
+
+/* ===========================
+   TIMER CHECK (OPTIONAL)
+=========================== */
+
+setInterval(()=>{
+if(uploadLockTime && Date.now() > uploadLockTime){
+uploadLockTime = null;
+uploadedFiles = [];
+fileStatus.textContent = "0 / 10 files uploaded";
+}
+},10000);
+
+</script>
+
+</body>
+</html>
